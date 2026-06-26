@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-anvarr-950 text-white font-sans;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  ::selection {
+    @apply bg-anvarr-gold/30 text-white;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-anvarr-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-anvarr-500;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-glass-gradient backdrop-blur-glass border border-white/5;
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-anvarr-gold-light via-anvarr-gold to-anvarr-gold-dark bg-clip-text text-transparent;
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 30px rgba(212, 160, 48, 0.15),
+                0 0 60px rgba(212, 160, 48, 0.05);
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .data-stream {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(212, 160, 48, 0.03) 50%,
+      transparent 100%
+    );
+    animation: dataFlow 3s linear infinite;
+  }
+}
+
+@keyframes dataFlow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
