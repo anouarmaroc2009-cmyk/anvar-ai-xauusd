@@ -319,12 +319,7 @@ function HeroSection() {
             Live Trading Intelligence
           </motion.div>
 
-          <motion.div
-            variants={fadeUp}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-10 rounded-full border border-anvarr-600/30 bg-anvarr-800/40 text-[8px] font-mono text-anvarr-slate/60 tracking-wider"
-          >
-            Hero visuals by Higgsfield AI
-          </motion.div>
+
 
           <motion.h1 className="text-6xl md:text-8xl lg:text-9xl font-bold tracking-tight leading-none mb-4">
             {letters.map((letter, i) => (
@@ -432,6 +427,9 @@ function HeroSection() {
 }
 
 function FeaturesSection() {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: "-60px" })
+
   return (
     <section id="features" className="relative py-24 px-4 bg-anvarr-900/50 overflow-hidden">
       <motion.div
@@ -440,14 +438,13 @@ function FeaturesSection() {
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
       <SectionTitle>Platform Capabilities</SectionTitle>
-      <div className="relative z-10 max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div ref={ref} className="relative z-10 max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-5">
         {features.map((feature, i) => (
           <motion.div
             key={feature.title}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.5, delay: i * 0.08, ease: "easeOut" }}
+            initial={{ opacity: 0, x: -120 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
             whileHover={{ y: -6, scale: 1.01 }}
             className="group relative rounded-xl border border-anvarr-700/50 bg-anvarr-800/40 backdrop-blur-xl p-6 transition-all duration-500 overflow-hidden"
           >
@@ -658,9 +655,7 @@ function FooterSection() {
           <span className="text-[9px] font-mono text-anvarr-500">XAUUSD Trading Intelligence</span>
         </div>
         <div className="flex items-center gap-4 text-[9px] font-mono text-anvarr-500">
-          <a href="https://higgsfield.ai" target="_blank" rel="noopener noreferrer" className="hover:text-anvarr-gold-light transition-colors">
-            Powered by Higgsfield AI
-          </a>
+          <span>XAUUSD Intelligence</span>
         </div>
       </div>
     </motion.footer>
