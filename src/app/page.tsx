@@ -442,35 +442,40 @@ function FeaturesSection() {
         {features.map((feature, i) => (
           <motion.div
             key={feature.title}
-            initial={{ opacity: 0, x: -120 }}
+            initial={{ opacity: 0, x: -160 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
-            whileHover={{ y: -6, scale: 1.01 }}
-            className="group relative rounded-xl border border-anvarr-700/50 bg-anvarr-800/40 backdrop-blur-xl p-6 transition-all duration-500 overflow-hidden"
           >
             <motion.div
-              className="absolute inset-0 bg-gradient-to-br from-anvarr-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-            />
-            <motion.div
-              className="absolute -top-10 -right-10 w-24 h-24 rounded-full border border-anvarr-gold/10"
-              whileHover={{ scale: 1.5, opacity: 0.3 }}
-              transition={{ duration: 0.6 }}
-            />
-            <div className="relative z-10">
+              animate={{ x: [0, 18, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.8 + i * 0.15 }}
+              whileHover={{ y: -6, scale: 1.01 }}
+              className="group relative rounded-xl border border-anvarr-700/50 bg-anvarr-800/40 backdrop-blur-xl p-6 transition-all duration-500 overflow-hidden"
+            >
               <motion.div
-                className="text-2xl mb-3 inline-block"
-                whileHover={{ scale: 1.2, rotate: [0, -10, 10, 0] }}
-                transition={{ duration: 0.4 }}
-              >
-                {feature.icon}
-              </motion.div>
-              <h3 className="text-sm font-bold font-mono tracking-wider text-anvarr-gold-light/90 uppercase mb-2">
-                {feature.title}
-              </h3>
-              <p className="text-xs leading-relaxed text-anvarr-slate-light/70">
-                {feature.desc}
-              </p>
-            </div>
+                className="absolute inset-0 bg-gradient-to-br from-anvarr-gold/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              />
+              <motion.div
+                className="absolute -top-10 -right-10 w-24 h-24 rounded-full border border-anvarr-gold/10"
+                whileHover={{ scale: 1.5, opacity: 0.3 }}
+                transition={{ duration: 0.6 }}
+              />
+              <div className="relative z-10">
+                <motion.div
+                  className="text-2xl mb-3 inline-block"
+                  whileHover={{ scale: 1.2, rotate: [0, -10, 10, 0] }}
+                  transition={{ duration: 0.4 }}
+                >
+                  {feature.icon}
+                </motion.div>
+                <h3 className="text-sm font-bold font-mono tracking-wider text-anvarr-gold-light/90 uppercase mb-2">
+                  {feature.title}
+                </h3>
+                <p className="text-xs leading-relaxed text-anvarr-slate-light/70">
+                  {feature.desc}
+                </p>
+              </div>
+            </motion.div>
           </motion.div>
         ))}
       </div>
