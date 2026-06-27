@@ -658,14 +658,8 @@ function FooterSection() {
           <span className="text-[9px] font-mono text-anvarr-500">XAUUSD Trading Intelligence</span>
         </div>
         <div className="flex items-center gap-4 text-[9px] font-mono text-anvarr-500">
-          <span>v0.1.0</span>
-          <span className="w-1 h-1 rounded-full bg-anvarr-600" />
-          <span>Open Source</span>
-          <span className="w-1 h-1 rounded-full bg-anvarr-600" />
-          <span>Images by Higgsfield AI</span>
-          <span className="w-1 h-1 rounded-full bg-anvarr-600" />
-          <a href="https://github.com/anouarmaroc2009-cmyk/anvar-ai-xauusd" target="_blank" rel="noopener noreferrer" className="hover:text-anvarr-gold-light transition-colors">
-            GitHub
+          <a href="https://higgsfield.ai" target="_blank" rel="noopener noreferrer" className="hover:text-anvarr-gold-light transition-colors">
+            Powered by Higgsfield AI
           </a>
         </div>
       </div>
