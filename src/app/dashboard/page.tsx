@@ -1,78 +1,241 @@
 "use client"
 
 import { useEffect, useCallback, useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useMarketData } from "@/hooks/useMarketData"
 import { macroEngine } from "@/lib/ai/macroEngine"
 import { smcEngine } from "@/lib/ai/microEngine"
 import { loadHistoricalData } from "@/lib/data/loadHistoricalData"
 import { OHLCBar } from "@/types/market"
+import { clsx } from "clsx"
 
-import { PriceTicker } from "@/components/dashboard/PriceTicker"
 import { MacroPanel } from "@/components/dashboard/MacroPanel"
 import { MicroPanel } from "@/components/dashboard/MicroPanel"
 import { MLPredictionPanel } from "@/components/dashboard/MLPredictionPanel"
 import { ExecutionPanel } from "@/components/dashboard/ExecutionPanel"
 import { OrderBookPanel } from "@/components/dashboard/OrderBook"
 import { TradingViewChart } from "@/components/charts/TradingViewChart"
-import { GlassCard } from "@/components/ui/GlassCard"
 import { BiasBadge } from "@/components/ui/BiasBadge"
 import { useAppStore } from "@/lib/store"
 
-function Header() {
-  const bias = macroEngine.analyze()
+type ViewMode = "overview" | "chart" | "ai" | "execution"
+
+interface CollapsiblePanelProps {
+  id: string
+  title: string
+  defaultCollapsed?: boolean
+  children: React.ReactNode
+  className?: string
+}
+
+function CollapsiblePanel({ id, title, defaultCollapsed, children, className }: CollapsiblePanelProps) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false)
 
   return (
-    <header className="flex items-center justify-between px-6 py-3 border-b border-anvarr-800">
-      <div className="flex items-center gap-4">
-        <a href="/" className="flex items-center gap-2 text-[9px] font-mono text-anvarr-500 hover:text-anvarr-slate-light transition-colors">
-          ← LANDING
-        </a>
-        <div className="h-4 w-px bg-anvarr-700" />
-        <h1 className="text-sm font-bold tracking-[0.2em] text-gradient-gold uppercase">
-          ANVARR
-        </h1>
-        <div className="h-4 w-px bg-anvarr-700" />
-        <span className="text-[10px] font-mono text-anvarr-slate tracking-wider">
-          XAUUSD Trading Intelligence
-        </span>
-      </div>
-      <div className="flex items-center gap-4">
-        <BiasBadge bias={bias.dailyBias} confidence={bias.biasConfidence} size="sm" />
-        <div className="flex items-center gap-2 text-[9px] font-mono text-anvarr-slate">
+    <div className={clsx("relative", className)}>
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="absolute top-2 right-2 z-10 text-[8px] font-mono text-anvarr-500 hover:text-white transition-colors"
+      >
+        {collapsed ? "[+]" : "[\u2212]"}
+      </button>
+      <AnimatePresence mode="wait">
+        {!collapsed && (
+          <motion.div
+            key={`${id}-open`}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {collapsed && (
+        <div className="h-full flex items-center justify-center rounded-xl border border-dashed border-anvarr-700/50 bg-anvarr-900/30">
+          <span className="text-[9px] font-mono text-anvarr-500">{title} (hidden)</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const views: { id: ViewMode; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "chart", label: "Chart" },
+  { id: "ai", label: "AI" },
+  { id: "execution", label: "Execution" },
+]
+
+function Header({ view, onViewChange, price, bars, historicalBars }: {
+  view: ViewMode
+  onViewChange: (v: ViewMode) => void
+  price: any
+  bars: OHLCBar[]
+  historicalBars: OHLCBar[]
+}) {
+  const bias = macroEngine.analyze()
+  const displayBars = bars.length > 0 ? bars : historicalBars
+  const lastClose = displayBars.length > 0 ? displayBars[displayBars.length - 1].close : 0
+  const prevClose = displayBars.length > 1 ? displayBars[displayBars.length - 2].close : lastClose
+  const dailyChange = lastClose - prevClose
+  const dailyChangePct = prevClose > 0 ? (dailyChange / prevClose) * 100 : 0
+
+  return (
+    <header className="flex flex-col border-b border-anvarr-800 bg-anvarr-950/90">
+      <div className="flex items-center justify-between px-4 py-2">
+        <div className="flex items-center gap-4">
+          <a href="/" className="text-[9px] font-mono text-anvarr-500 hover:text-anvarr-slate-light transition-colors">
+            ← LANDING
+          </a>
+          <div className="h-4 w-px bg-anvarr-700" />
+          <h1 className="text-xs font-bold tracking-[0.2em] text-gradient-gold uppercase">ANVARR</h1>
+          <div className="h-4 w-px bg-anvarr-700" />
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold font-mono text-white">${lastClose.toFixed(2)}</span>
+            <span className={clsx(
+              "text-[10px] font-mono font-semibold",
+              dailyChange >= 0 ? "text-anvarr-accent-green" : "text-anvarr-accent-red"
+            )}>
+              {dailyChange >= 0 ? "+" : ""}{dailyChange.toFixed(2)} ({(dailyChangePct).toFixed(2)}%)
+            </span>
+          </div>
+          {price && (
+            <>
+              <div className="h-4 w-px bg-anvarr-700" />
+              <span className="text-[9px] font-mono text-anvarr-slate">
+                ASK ${price.ask.toFixed(2)}
+              </span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <BiasBadge bias={bias.dailyBias} confidence={bias.biasConfidence} size="sm" />
           <span className="w-1.5 h-1.5 rounded-full bg-anvarr-accent-green animate-pulse" />
-          SYSTEM NOMINAL
         </div>
       </div>
+      <nav className="flex gap-1 px-4 pb-1">
+        {views.map((v) => (
+          <button
+            key={v.id}
+            onClick={() => onViewChange(v.id)}
+            className={clsx(
+              "px-3 py-1 text-[10px] font-mono rounded-t transition-colors",
+              view === v.id
+                ? "bg-anvarr-800 text-white border-b-2 border-anvarr-gold"
+                : "text-anvarr-500 hover:text-anvarr-slate-light hover:bg-anvarr-800/40"
+            )}
+          >
+            {v.label}
+          </button>
+        ))}
+      </nav>
     </header>
   )
 }
 
-function StatusBar({ historicalBarsCount }: { historicalBarsCount: number }) {
+function DashboardGrid({ children }: { children: React.ReactNode }) {
   return (
-    <footer className="flex items-center justify-between px-6 py-1.5 border-t border-anvarr-800 bg-anvarr-950/80">
-      <div className="flex items-center gap-4 text-[8px] font-mono text-anvarr-500">
-        <span>ANVARR v0.1.0</span>
-        <span>WS: STANDBY</span>
-        <span>ENGINE: LOCAL</span>
-        {historicalBarsCount > 0 && (
-          <span className="text-anvarr-accent-green">
-            HIST: {historicalBarsCount}D
-          </span>
-        )}
-        <span className="text-anvarr-accent-blue">AI: XGBoost 57.4%</span>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="h-full grid grid-cols-12 gap-3 p-3 auto-rows-fr"
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+function OverviewView({ bars, historicalBars }: { bars: OHLCBar[]; historicalBars: OHLCBar[] }) {
+  return (
+    <DashboardGrid>
+      <div className="col-span-12 lg:col-span-4 row-span-2">
+        <TradingViewChart bars={bars.length > 0 ? bars : historicalBars.slice(-200)} height={320} />
       </div>
-      <div className="flex items-center gap-3 text-[8px] font-mono text-anvarr-500">
-        <span>XAUUSD REAL-TIME</span>
-        <span className="text-anvarr-gold/60">●</span>
-        <span>LATENCY: —</span>
+      <CollapsiblePanel id="macro" title="Macro" className="col-span-6 lg:col-span-2">
+        <MacroPanel />
+      </CollapsiblePanel>
+      <CollapsiblePanel id="micro" title="SMC/ICT" className="col-span-6 lg:col-span-2">
+        <MicroPanel />
+      </CollapsiblePanel>
+      <CollapsiblePanel id="orderbook" title="Order Book" className="col-span-6 lg:col-span-2">
+        <OrderBookPanel />
+      </CollapsiblePanel>
+      <CollapsiblePanel id="execution" title="Execution" className="col-span-6 lg:col-span-2">
+        <ExecutionPanel />
+      </CollapsiblePanel>
+      <CollapsiblePanel id="ml" title="AI Prediction" className="col-span-12 lg:col-span-4">
+        <MLPredictionPanel />
+      </CollapsiblePanel>
+    </DashboardGrid>
+  )
+}
+
+function ChartView({ bars, historicalBars }: { bars: OHLCBar[]; historicalBars: OHLCBar[] }) {
+  return (
+    <DashboardGrid>
+      <div className="col-span-12 lg:col-span-8 row-span-2">
+        <TradingViewChart bars={bars.length > 0 ? bars : historicalBars.slice(-400)} height={500} />
       </div>
-    </footer>
+      <div className="col-span-12 lg:col-span-4 row-span-2">
+        <MLPredictionPanel />
+      </div>
+      <div className="col-span-6 lg:col-span-4">
+        <MacroPanel />
+      </div>
+      <div className="col-span-6 lg:col-span-4">
+        <MicroPanel />
+      </div>
+      <div className="col-span-12 lg:col-span-4">
+        <OrderBookPanel />
+      </div>
+    </DashboardGrid>
+  )
+}
+
+function AIView() {
+  return (
+    <DashboardGrid>
+      <div className="col-span-12 lg:col-span-6 row-span-2">
+        <MLPredictionPanel />
+      </div>
+      <div className="col-span-12 lg:col-span-3">
+        <MacroPanel />
+      </div>
+      <div className="col-span-12 lg:col-span-3">
+        <MicroPanel />
+      </div>
+    </DashboardGrid>
+  )
+}
+
+function ExecutionView() {
+  return (
+    <DashboardGrid>
+      <div className="col-span-12 lg:col-span-4 row-span-2">
+        <ExecutionPanel />
+      </div>
+      <div className="col-span-12 lg:col-span-4 row-span-2">
+        <OrderBookPanel />
+      </div>
+      <div className="col-span-12 lg:col-span-4">
+        <MacroPanel />
+      </div>
+      <div className="col-span-12 lg:col-span-4">
+        <MicroPanel />
+      </div>
+    </DashboardGrid>
   )
 }
 
 export default function Dashboard() {
   const [historicalBars, setHistoricalBars] = useState<OHLCBar[]>([])
-  const { price, bars, generateMockPrice, historicalLoaded } = useMarketData(historicalBars.length > 0 ? historicalBars : undefined)
+  const { price, bars, generateMockPrice, historicalLoaded } = useMarketData(
+    historicalBars.length > 0 ? historicalBars : undefined
+  )
+  const [view, setView] = useState<ViewMode>("overview")
   const deepFocusMode = useAppStore((s) => s.deepFocusMode)
   const toggleDeepFocus = useAppStore((s) => s.toggleDeepFocus)
 
@@ -101,69 +264,54 @@ export default function Dashboard() {
         })
       }
     }, 3000)
-
     return () => clearInterval(interval)
   }, [generateMockPrice])
 
-  if (deepFocusMode) {
-    return (
-      <div className="h-screen flex flex-col bg-anvarr-950">
-        <Header />
-        <div className="flex-1 p-3">
-          <div className="relative">
-            <button
-              onClick={toggleDeepFocus}
-              className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-lg bg-anvarr-800/80 border border-anvarr-700/50 text-[9px] font-mono text-anvarr-slate hover:text-white transition-colors"
-            >
-              EXIT DEEP FOCUS
-            </button>
-            <TradingViewChart bars={bars} height={700} />
-          </div>
-        </div>
-        <StatusBar historicalBarsCount={historicalBars.length} />
-      </div>
-    )
+  const viewComponents: Record<ViewMode, React.ReactNode> = {
+    overview: <OverviewView bars={bars} historicalBars={historicalBars} />,
+    chart: <ChartView bars={bars} historicalBars={historicalBars} />,
+    ai: <AIView />,
+    execution: <ExecutionView />,
   }
 
   return (
     <div className="h-screen flex flex-col bg-anvarr-950">
-      <Header />
-
+      <Header
+        view={view}
+        onViewChange={setView}
+        price={price}
+        bars={bars}
+        historicalBars={historicalBars}
+      />
       <div className="flex-1 overflow-hidden">
-        <div className="h-full grid grid-cols-12 gap-3 p-3 auto-rows-fr">
-          <div className="col-span-12">
-            <GlassCard className="!p-0 !bg-transparent !border-none !shadow-none">
-              <PriceTicker price={price} />
-            </GlassCard>
-          </div>
-
-          <div className="col-span-12 lg:col-span-4 row-span-2">
-            <TradingViewChart bars={bars.length > 0 ? bars : historicalBars.slice(-200)} height={320} />
-          </div>
-
-          <div className="col-span-6 lg:col-span-2">
-            <MacroPanel />
-          </div>
-
-          <div className="col-span-6 lg:col-span-2">
-            <MicroPanel />
-          </div>
-
-          <div className="col-span-6 lg:col-span-2">
-            <OrderBookPanel />
-          </div>
-
-          <div className="col-span-6 lg:col-span-2">
-            <ExecutionPanel />
-          </div>
-
-          <div className="col-span-12 lg:col-span-4">
-            <MLPredictionPanel />
-          </div>
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={view}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+            className="h-full"
+          >
+            {viewComponents[view]}
+          </motion.div>
+        </AnimatePresence>
       </div>
-
-      <StatusBar historicalBarsCount={historicalBars.length} />
+      <footer className="flex items-center justify-between px-4 py-1 border-t border-anvarr-800 bg-anvarr-950/80">
+        <div className="flex items-center gap-3 text-[8px] font-mono text-anvarr-500">
+          <span>ANVARR v0.1.0</span>
+          <span>WS: STANDBY</span>
+          <span>ENGINE: LOCAL</span>
+          {historicalBars.length > 0 && (
+            <span className="text-anvarr-accent-green">HIST: {historicalBars.length}D</span>
+          )}
+          <span className="text-anvarr-accent-blue">AI: XGBoost 57.4%</span>
+        </div>
+        <div className="flex items-center gap-3 text-[8px] font-mono text-anvarr-500">
+          <span>{view.toUpperCase()} VIEW</span>
+          <span className="text-anvarr-gold/60">●</span>
+        </div>
+      </footer>
     </div>
   )
 }
