@@ -3,7 +3,19 @@
 import { GlassCard, GlassCardHeader, GlassCardBody } from "@/components/ui/GlassCard"
 import { motion } from "framer-motion"
 
-const mockBids = [
+interface OrderLevel {
+  price: number
+  size: number
+}
+
+interface OrderBookPanelProps {
+  bids?: OrderLevel[]
+  asks?: OrderLevel[]
+  spread?: number
+  mid?: number
+}
+
+const defaultBids = [
   { price: 2349.8, size: 12.4 },
   { price: 2349.5, size: 8.7 },
   { price: 2349.2, size: 15.2 },
@@ -14,7 +26,7 @@ const mockBids = [
   { price: 2347.0, size: 9.2 },
 ]
 
-const mockAsks = [
+const defaultAsks = [
   { price: 2350.2, size: 10.1 },
   { price: 2350.5, size: 14.3 },
   { price: 2350.8, size: 6.5 },
@@ -25,22 +37,7 @@ const mockAsks = [
   { price: 2353.0, size: 15.9 },
 ]
 
-const maxSize = Math.max(
-  ...mockBids.map((b) => b.size),
-  ...mockAsks.map((a) => a.size)
-)
-
-function OrderRow({
-  price,
-  size,
-  side,
-  max,
-}: {
-  price: number
-  size: number
-  side: "bid" | "ask"
-  max: number
-}) {
+function OrderRow({ price, size, side, max }: { price: number; size: number; side: "bid" | "ask"; max: number }) {
   const pct = (size / max) * 100
   return (
     <div className="flex items-center gap-2 py-0.5 group relative">
@@ -70,7 +67,13 @@ function OrderRow({
   )
 }
 
-export function OrderBookPanel() {
+export function OrderBookPanel({ bids: liveBids, asks: liveAsks, spread: liveSpread, mid: liveMid }: OrderBookPanelProps) {
+  const bids = liveBids ?? defaultBids
+  const asks = liveAsks ?? defaultAsks
+  const mid = liveMid ?? (((bids[0]?.price ?? 0) + (asks[0]?.price ?? 0)) / 2)
+  const spread = liveSpread ?? ((asks[0]?.price ?? 0) - (bids[0]?.price ?? 0))
+  const maxSize = Math.max(...bids.map((b) => b.size), ...asks.map((a) => a.size))
+
   return (
     <GlassCard className="h-full">
       <GlassCardHeader>
@@ -80,20 +83,20 @@ export function OrderBookPanel() {
       </GlassCardHeader>
       <GlassCardBody className="p-2">
         <div className="space-y-0.5">
-          {mockAsks.slice().reverse().map((ask, i) => (
+          {asks.slice().reverse().map((ask, i) => (
             <OrderRow key={`ask-${i}`} {...ask} side="ask" max={maxSize} />
           ))}
         </div>
         <div className="my-1 py-1 border-y border-anvarr-700/50 text-center">
           <span className="text-[9px] font-mono text-anvarr-gold font-bold">
-            {((mockBids[0].price + mockAsks[0].price) / 2).toFixed(2)}
+            {mid.toFixed(2)}
           </span>
           <span className="text-[8px] font-mono text-anvarr-slate ml-2">
-            SPREAD {(mockAsks[0].price - mockBids[0].price).toFixed(1)}
+            SPREAD {spread.toFixed(1)}
           </span>
         </div>
         <div className="space-y-0.5">
-          {mockBids.map((bid, i) => (
+          {bids.map((bid, i) => (
             <OrderRow key={`bid-${i}`} {...bid} side="bid" max={maxSize} />
           ))}
         </div>

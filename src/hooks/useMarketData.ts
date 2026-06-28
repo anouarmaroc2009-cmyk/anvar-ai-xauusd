@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { XAUUSDPrice, OHLCBar } from "@/types/market"
-import { QuantitativeSignal } from "@/types/ai"
+import { QuantitativeSignal, ExecutionOrder } from "@/types/ai"
 import { useWebSocket } from "./useWebSocket"
 
 export function useMarketData(initialBars?: OHLCBar[]) {
@@ -10,15 +10,8 @@ export function useMarketData(initialBars?: OHLCBar[]) {
   const [price, setPrice] = useState<XAUUSDPrice | null>(null)
   const [bars, setBars] = useState<OHLCBar[]>(initialBars ?? [])
   const [historicalLoaded, setHistoricalLoaded] = useState(!!initialBars)
-  const initialBarsRef = useRef(initialBars)
-
-  useEffect(() => {
-    if (initialBars && initialBars !== initialBarsRef.current) {
-      initialBarsRef.current = initialBars
-      setBars(initialBars)
-      setHistoricalLoaded(true)
-    }
-  }, [initialBars])
+  const [orderBook, setOrderBook] = useState<{ bids: { price: number; size: number }[]; asks: { price: number; size: number }[] } | null>(null)
+  const [recentOrders, setRecentOrders] = useState<ExecutionOrder[]>([])
   const [signal, setSignal] = useState<QuantitativeSignal>({
     signal: "neutral",
     strength: 0,
@@ -29,19 +22,51 @@ export function useMarketData(initialBars?: OHLCBar[]) {
     resistance: 0,
   })
 
+  const initialBarsRef = useRef(initialBars)
+
+  useEffect(() => {
+    if (initialBars && initialBars !== initialBarsRef.current) {
+      initialBarsRef.current = initialBars
+      setBars(initialBars)
+      setHistoricalLoaded(true)
+    }
+  }, [initialBars])
+
   const priceHistory = useRef<number[]>([])
 
   useEffect(() => {
     if (state !== "connected") return
 
     subscribe("price", "XAUUSD")
-    subscribe("ohlc", "XAUUSD", ["1m", "5m", "1h"])
+    subscribe("ohlc", "XAUUSD", ["1m"])
 
-    const unsubPrice = onMessage("price", (data) => {
-      const p = data as XAUUSDPrice
-      setPrice(p)
-      priceHistory.current.push(p.bid)
+    const unsubPrice = onMessage("price", (data: any) => {
+      const tick = data as XAUUSDPrice & { orderbook?: any; orders?: any[]; macroEvent?: any }
+      setPrice(tick)
+      priceHistory.current.push(tick.bid)
       if (priceHistory.current.length > 100) priceHistory.current.shift()
+
+      if (tick.orderbook) setOrderBook(tick.orderbook)
+      if (tick.orders) {
+        setRecentOrders(tick.orders.map((o: any) => ({
+          id: o.id,
+          side: o.side,
+          size: o.size,
+          price: o.price,
+          status: o.status,
+          type: "market",
+          stopLoss: 0,
+          takeProfit: 0,
+          riskPercent: 0,
+          rrr: 0,
+          confluenceScore: 0,
+          created: o.timestamp,
+        })))
+      }
+      if (tick.macroEvent) {
+        const { macroEngine } = require("@/lib/ai/macroEngine")
+        macroEngine.ingestEvent(tick.macroEvent)
+      }
     })
 
     const unsubOHLC = onMessage("ohlc", (data) => {
@@ -104,6 +129,8 @@ export function useMarketData(initialBars?: OHLCBar[]) {
   }, [bars])
 
   const generateMockPrice = useCallback(() => {
+    if (state === "connected") return null
+
     const lastHistoricalClose = initialBars?.length ? initialBars[initialBars.length - 1].close : 0
     const lastPrice = price?.bid ?? lastHistoricalClose ?? 2350.0
     const change = (Math.random() - 0.5) * 2
@@ -136,7 +163,16 @@ export function useMarketData(initialBars?: OHLCBar[]) {
     }
 
     return mockPrice
-  }, [price])
+  }, [price, state])
 
-  return { price, bars, signal, state, historicalLoaded, generateMockPrice }
+  return {
+    price,
+    bars,
+    signal,
+    state,
+    historicalLoaded,
+    orderBook,
+    recentOrders,
+    generateMockPrice,
+  }
 }

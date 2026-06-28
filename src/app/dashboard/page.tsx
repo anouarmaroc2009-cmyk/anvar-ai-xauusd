@@ -148,7 +148,12 @@ function DashboardGrid({ children }: { children: React.ReactNode }) {
   )
 }
 
-function OverviewView({ bars, historicalBars }: { bars: OHLCBar[]; historicalBars: OHLCBar[] }) {
+function OverviewView({ bars, historicalBars, orderBook }: { bars: OHLCBar[]; historicalBars: OHLCBar[]; orderBook: any }) {
+  const obBids = orderBook?.bids
+  const obAsks = orderBook?.asks
+  const obMid = obBids?.[0] && obAsks?.[0] ? (obBids[0].price + obAsks[0].price) / 2 : undefined
+  const obSpread = obBids?.[0] && obAsks?.[0] ? obAsks[0].price - obBids[0].price : undefined
+
   return (
     <DashboardGrid>
       <div className="col-span-12 lg:col-span-4 row-span-2">
@@ -161,7 +166,7 @@ function OverviewView({ bars, historicalBars }: { bars: OHLCBar[]; historicalBar
         <MicroPanel />
       </CollapsiblePanel>
       <CollapsiblePanel id="orderbook" title="Order Book" className="col-span-6 lg:col-span-2">
-        <OrderBookPanel />
+        <OrderBookPanel bids={obBids} asks={obAsks} mid={obMid} spread={obSpread} />
       </CollapsiblePanel>
       <CollapsiblePanel id="execution" title="Execution" className="col-span-6 lg:col-span-2">
         <ExecutionPanel />
@@ -173,7 +178,12 @@ function OverviewView({ bars, historicalBars }: { bars: OHLCBar[]; historicalBar
   )
 }
 
-function ChartView({ bars, historicalBars }: { bars: OHLCBar[]; historicalBars: OHLCBar[] }) {
+function ChartView({ bars, historicalBars, orderBook }: { bars: OHLCBar[]; historicalBars: OHLCBar[]; orderBook: any }) {
+  const obBids = orderBook?.bids
+  const obAsks = orderBook?.asks
+  const obMid = obBids?.[0] && obAsks?.[0] ? (obBids[0].price + obAsks[0].price) / 2 : undefined
+  const obSpread = obBids?.[0] && obAsks?.[0] ? obAsks[0].price - obBids[0].price : undefined
+
   return (
     <DashboardGrid>
       <div className="col-span-12 lg:col-span-8 row-span-2">
@@ -189,7 +199,7 @@ function ChartView({ bars, historicalBars }: { bars: OHLCBar[]; historicalBars: 
         <MicroPanel />
       </div>
       <div className="col-span-12 lg:col-span-4">
-        <OrderBookPanel />
+        <OrderBookPanel bids={obBids} asks={obAsks} mid={obMid} spread={obSpread} />
       </div>
     </DashboardGrid>
   )
@@ -232,7 +242,7 @@ function ExecutionView() {
 
 export default function Dashboard() {
   const [historicalBars, setHistoricalBars] = useState<OHLCBar[]>([])
-  const { price, bars, generateMockPrice, historicalLoaded } = useMarketData(
+  const { price, bars, orderBook, recentOrders, generateMockPrice, historicalLoaded, state } = useMarketData(
     historicalBars.length > 0 ? historicalBars : undefined
   )
   const [view, setView] = useState<ViewMode>("overview")
@@ -268,8 +278,8 @@ export default function Dashboard() {
   }, [generateMockPrice])
 
   const viewComponents: Record<ViewMode, React.ReactNode> = {
-    overview: <OverviewView bars={bars} historicalBars={historicalBars} />,
-    chart: <ChartView bars={bars} historicalBars={historicalBars} />,
+    overview: <OverviewView bars={bars} historicalBars={historicalBars} orderBook={orderBook} />,
+    chart: <ChartView bars={bars} historicalBars={historicalBars} orderBook={orderBook} />,
     ai: <AIView />,
     execution: <ExecutionView />,
   }
@@ -300,7 +310,9 @@ export default function Dashboard() {
       <footer className="flex items-center justify-between px-4 py-1 border-t border-anvarr-800 bg-anvarr-950/80">
         <div className="flex items-center gap-3 text-[8px] font-mono text-anvarr-500">
           <span>ANVARR v0.1.0</span>
-          <span>WS: STANDBY</span>
+          <span className={state === "connected" ? "text-anvarr-accent-green" : "text-anvarr-accent-orange"}>
+            WS: {state.toUpperCase()}
+          </span>
           <span>ENGINE: LOCAL</span>
           {historicalBars.length > 0 && (
             <span className="text-anvarr-accent-green">HIST: {historicalBars.length}D</span>
@@ -309,7 +321,7 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3 text-[8px] font-mono text-anvarr-500">
           <span>{view.toUpperCase()} VIEW</span>
-          <span className="text-anvarr-gold/60">●</span>
+          <span className={`${state === "connected" ? "text-anvarr-accent-green" : "text-anvarr-gold/60"} animate-pulse`}>●</span>
         </div>
       </footer>
     </div>

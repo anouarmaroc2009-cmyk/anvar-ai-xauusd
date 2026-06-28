@@ -6,7 +6,7 @@ export interface WSConfig {
 }
 
 export const DEFAULT_WS_CONFIG: WSConfig = {
-  url: "wss://data.anvarr.io/v1/xauusd",
+  url: process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001",
   reconnectInterval: 1000,
   maxReconnectAttempts: 10,
   heartbeatInterval: 30000,
