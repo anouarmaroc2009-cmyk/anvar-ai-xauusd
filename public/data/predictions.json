@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-06-27T00:00:00",
+  "current_price": 4087.91,
+  "next_close_prediction": 4075.53,
+  "price_change_pct": -0.3,
+  "direction": "down",
+  "confidence": 61.29999923706055,
+  "signal_strength": "strong",
+  "recent_trend": "down",
+  "top_features": [
+    {
+      "feature": "return_lag_5",
+      "importance": 0.03550000116229057
+    },
+    {
+      "feature": "range_pct",
+      "importance": 0.032099999487400055
+    },
+    {
+      "feature": "low_10",
+      "importance": 0.031700000166893005
+    },
+    {
+      "feature": "sma_10",
+      "importance": 0.031599998474121094
+    },
+    {
+      "feature": "high_10",
+      "importance": 0.03150000050663948
+    },
+    {
+      "feature": "low_21",
+      "importance": 0.03150000050663948
+    },
+    {
+      "feature": "sma_5",
+      "importance": 0.030899999663233757
+    },
+    {
+      "feature": "ema_21",
+      "importance": 0.030500000342726707
+    },
+    {
+      "feature": "return_lag_2",
+      "importance": 0.030500000342726707
+    },
+    {
+      "feature": "return_1d",
+      "importance": 0.02969999983906746
+    }
+  ]
+}

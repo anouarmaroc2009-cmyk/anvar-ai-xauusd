@@ -1,14 +1,16 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useState } from "react"
 import { useMarketData } from "@/hooks/useMarketData"
 import { macroEngine } from "@/lib/ai/macroEngine"
 import { smcEngine } from "@/lib/ai/microEngine"
+import { loadHistoricalData } from "@/lib/data/loadHistoricalData"
+import { OHLCBar } from "@/types/market"
 
 import { PriceTicker } from "@/components/dashboard/PriceTicker"
 import { MacroPanel } from "@/components/dashboard/MacroPanel"
 import { MicroPanel } from "@/components/dashboard/MicroPanel"
-import { CalculatorPanel } from "@/components/dashboard/CalculatorPanel"
+import { MLPredictionPanel } from "@/components/dashboard/MLPredictionPanel"
 import { ExecutionPanel } from "@/components/dashboard/ExecutionPanel"
 import { OrderBookPanel } from "@/components/dashboard/OrderBook"
 import { TradingViewChart } from "@/components/charts/TradingViewChart"
@@ -45,13 +47,19 @@ function Header() {
   )
 }
 
-function StatusBar() {
+function StatusBar({ historicalBarsCount }: { historicalBarsCount: number }) {
   return (
     <footer className="flex items-center justify-between px-6 py-1.5 border-t border-anvarr-800 bg-anvarr-950/80">
       <div className="flex items-center gap-4 text-[8px] font-mono text-anvarr-500">
         <span>ANVARR v0.1.0</span>
         <span>WS: STANDBY</span>
         <span>ENGINE: LOCAL</span>
+        {historicalBarsCount > 0 && (
+          <span className="text-anvarr-accent-green">
+            HIST: {historicalBarsCount}D
+          </span>
+        )}
+        <span className="text-anvarr-accent-blue">AI: XGBoost 57.4%</span>
       </div>
       <div className="flex items-center gap-3 text-[8px] font-mono text-anvarr-500">
         <span>XAUUSD REAL-TIME</span>
@@ -63,44 +71,39 @@ function StatusBar() {
 }
 
 export default function Dashboard() {
-  const { price, bars, generateMockPrice } = useMarketData()
+  const [historicalBars, setHistoricalBars] = useState<OHLCBar[]>([])
+  const { price, bars, generateMockPrice, historicalLoaded } = useMarketData(historicalBars.length > 0 ? historicalBars : undefined)
   const deepFocusMode = useAppStore((s) => s.deepFocusMode)
   const toggleDeepFocus = useAppStore((s) => s.toggleDeepFocus)
+
+  useEffect(() => {
+    loadHistoricalData().then((dailyBars) => {
+      if (dailyBars.length === 0) return
+      setHistoricalBars(dailyBars)
+      smcEngine.feedBars("D", dailyBars)
+      macroEngine.setMacroEnvironment(104.5, 4.25)
+    })
+  }, [])
 
   const startMockData = useCallback(() => {
     const interval = setInterval(() => {
       const p = generateMockPrice()
 
-      macroEngine.ingestEvent({
-        id: `evt_${Date.now()}`,
-        type: Math.random() > 0.7 ? "FOMC" : Math.random() > 0.5 ? "CPI" : "Geopolitical",
-        title: "Macro Event Update",
-        impact: Math.random() > 0.7 ? "high" : "medium",
-        timestamp: Date.now(),
-        summary: "Automated macro event for simulation",
-        sentiment: Math.random() > 0.5 ? "bullish" : "bearish",
-      })
-
-      for (let i = 0; i < bars.length; i++) {
-        const mockBar = {
-          time: Date.now() - (bars.length - i) * 60000,
-          open: p.bid + (Math.random() - 0.5) * 2,
-          high: p.bid + Math.random() * 3,
-          low: p.bid - Math.random() * 3,
-          close: p.bid,
-          volume: Math.round(Math.random() * 5000),
-        }
-        smcEngine.feedBars("1h", [mockBar])
+      if (Math.random() > 0.85) {
+        macroEngine.ingestEvent({
+          id: `evt_${Date.now()}`,
+          type: Math.random() > 0.7 ? "FOMC" : Math.random() > 0.5 ? "CPI" : "Geopolitical",
+          title: "Macro Event Update",
+          impact: Math.random() > 0.7 ? "high" : "medium",
+          timestamp: Date.now(),
+          summary: "Automated macro event for simulation",
+          sentiment: Math.random() > 0.5 ? "bullish" : "bearish",
+        })
       }
-    }, 2000)
+    }, 3000)
 
     return () => clearInterval(interval)
-  }, [generateMockPrice, bars.length])
-
-  useEffect(() => {
-    const cleanup = startMockData()
-    return cleanup
-  }, [startMockData])
+  }, [generateMockPrice])
 
   if (deepFocusMode) {
     return (
@@ -117,7 +120,7 @@ export default function Dashboard() {
             <TradingViewChart bars={bars} height={700} />
           </div>
         </div>
-        <StatusBar />
+        <StatusBar historicalBarsCount={historicalBars.length} />
       </div>
     )
   }
@@ -135,7 +138,7 @@ export default function Dashboard() {
           </div>
 
           <div className="col-span-12 lg:col-span-4 row-span-2">
-            <TradingViewChart bars={bars} height={320} />
+            <TradingViewChart bars={bars.length > 0 ? bars : historicalBars.slice(-200)} height={320} />
           </div>
 
           <div className="col-span-6 lg:col-span-2">
@@ -155,12 +158,12 @@ export default function Dashboard() {
           </div>
 
           <div className="col-span-12 lg:col-span-4">
-            <CalculatorPanel />
+            <MLPredictionPanel />
           </div>
         </div>
       </div>
 
-      <StatusBar />
+      <StatusBar historicalBarsCount={historicalBars.length} />
     </div>
   )
 }

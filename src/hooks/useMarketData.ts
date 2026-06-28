@@ -5,10 +5,20 @@ import { XAUUSDPrice, OHLCBar } from "@/types/market"
 import { QuantitativeSignal } from "@/types/ai"
 import { useWebSocket } from "./useWebSocket"
 
-export function useMarketData() {
+export function useMarketData(initialBars?: OHLCBar[]) {
   const { state, subscribe, onMessage } = useWebSocket()
   const [price, setPrice] = useState<XAUUSDPrice | null>(null)
-  const [bars, setBars] = useState<OHLCBar[]>([])
+  const [bars, setBars] = useState<OHLCBar[]>(initialBars ?? [])
+  const [historicalLoaded, setHistoricalLoaded] = useState(!!initialBars)
+  const initialBarsRef = useRef(initialBars)
+
+  useEffect(() => {
+    if (initialBars && initialBars !== initialBarsRef.current) {
+      initialBarsRef.current = initialBars
+      setBars(initialBars)
+      setHistoricalLoaded(true)
+    }
+  }, [initialBars])
   const [signal, setSignal] = useState<QuantitativeSignal>({
     signal: "neutral",
     strength: 0,
@@ -94,7 +104,8 @@ export function useMarketData() {
   }, [bars])
 
   const generateMockPrice = useCallback(() => {
-    const lastPrice = price?.bid ?? 2350.0
+    const lastHistoricalClose = initialBars?.length ? initialBars[initialBars.length - 1].close : 0
+    const lastPrice = price?.bid ?? lastHistoricalClose ?? 2350.0
     const change = (Math.random() - 0.5) * 2
     const newBid = lastPrice + change
     const spread = 0.1 + Math.random() * 0.3
@@ -127,5 +138,5 @@ export function useMarketData() {
     return mockPrice
   }, [price])
 
-  return { price, bars, signal, state, generateMockPrice }
+  return { price, bars, signal, state, historicalLoaded, generateMockPrice }
 }
