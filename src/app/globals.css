@@ -64,6 +64,10 @@
     display: none;
   }
 
+  .perspective-500 {
+    perspective: 500px;
+  }
+
   .data-stream {
     background: linear-gradient(
       90deg,

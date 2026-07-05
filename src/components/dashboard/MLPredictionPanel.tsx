@@ -38,8 +38,6 @@ export function MLPredictionPanel() {
       ? "text-anvarr-gold"
       : "text-anvarr-slate"
 
-  const confPct = (prediction.confidence / 100)
-
   return (
     <GlassCard glowColor="blue" className="h-full">
       <GlassCardHeader>
@@ -87,10 +85,10 @@ export function MLPredictionPanel() {
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
-                  width: `${confPct * 100}%`,
-                  backgroundColor: confPct > 0.7
+                  width: `${prediction.confidence}%`,
+                  backgroundColor: prediction.confidence > 70
                     ? "#22c55e"
-                    : confPct > 0.5
+                    : prediction.confidence > 50
                       ? "#d4a030"
                       : "#ef4444",
                 }}
@@ -111,7 +109,7 @@ export function MLPredictionPanel() {
                   <div className="flex-1 h-1 bg-anvarr-900 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-anvarr-accent-blue/60 rounded-full"
-                      style={{ width: `${f.importance * 1500}%` }}
+                      style={{ width: `${f.importance * 100}%` }}
                     />
                   </div>
                   <span className="text-[7px] font-mono text-anvarr-500 w-8 text-right">

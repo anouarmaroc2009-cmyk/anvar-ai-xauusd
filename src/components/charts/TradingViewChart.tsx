@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { createChart, IChartApi, ISeriesApi, CandlestickSeriesPartialOptions, CandlestickData, LineSeriesPartialOptions, LineData } from "lightweight-charts"
+import { useEffect, useRef, useState, useMemo } from "react"
+import { createChart, IChartApi, ISeriesApi, CandlestickSeriesPartialOptions, CandlestickData, HistogramData } from "lightweight-charts"
 import { GlassCard, GlassCardHeader, GlassCardBody } from "@/components/ui/GlassCard"
 import { OHLCBar } from "@/types/market"
 import { clsx } from "clsx"
@@ -12,19 +12,49 @@ interface TradingViewChartProps {
   showVolume?: boolean
 }
 
-const timeframes = ["1m", "5m", "15m", "30m", "1h", "4h", "D"]
+const TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "D"] as const
+type TF = (typeof TIMEFRAMES)[number]
+
+const TF_MS: Record<TF, number> = {
+  "1m": 60000,
+  "5m": 300000,
+  "15m": 900000,
+  "30m": 1800000,
+  "1h": 3600000,
+  "4h": 14400000,
+  "D": 86400000,
+}
+
+function aggregateBars(raw: OHLCBar[], tf: TF): OHLCBar[] {
+  const ms = TF_MS[tf]
+  const buckets = new Map<number, OHLCBar>()
+  for (const bar of raw) {
+    const t = Math.floor(bar.time / ms) * ms
+    const existing = buckets.get(t)
+    if (existing) {
+      existing.high = Math.max(existing.high, bar.high)
+      existing.low = Math.min(existing.low, bar.low)
+      existing.close = bar.close
+      existing.volume += bar.volume
+    } else {
+      buckets.set(t, { time: t, open: bar.open, high: bar.high, low: bar.low, close: bar.close, volume: bar.volume })
+    }
+  }
+  return [...buckets.values()].sort((a, b) => a.time - b.time)
+}
 
 export function TradingViewChart({
   bars,
   height = 400,
-  showVolume = true,
 }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null)
-  const [selectedTF, setSelectedTF] = useState("1h")
+  const [selectedTF, setSelectedTF] = useState<TF>("1h")
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  const aggBars = useMemo(() => aggregateBars(bars, selectedTF), [bars, selectedTF])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -92,10 +122,12 @@ export function TradingViewChart({
   }, [height])
 
   useEffect(() => {
-    if (!candleSeriesRef.current || bars.length === 0) return
+    if (!candleSeriesRef.current || aggBars.length === 0) return
 
-    const candleData: CandlestickData[] = bars.map((bar) => ({
-      time: Math.floor(bar.time / 1000) as any,
+    const toTime = (ms: number): number => Math.floor(ms / 1000)
+
+    const candleData: CandlestickData[] = aggBars.map((bar) => ({
+      time: toTime(bar.time) as CandlestickData["time"],
       open: bar.open,
       high: bar.high,
       low: bar.low,
@@ -103,7 +135,16 @@ export function TradingViewChart({
     }))
 
     candleSeriesRef.current.setData(candleData)
-  }, [bars])
+
+    if (volumeSeriesRef.current) {
+      const volumeData: HistogramData[] = aggBars.map((bar) => ({
+        time: toTime(bar.time) as HistogramData["time"],
+        value: bar.volume,
+        color: bar.close >= bar.open ? "#22c55e44" : "#ef444444",
+      }))
+      volumeSeriesRef.current.setData(volumeData)
+    }
+  }, [aggBars])
 
   return (
     <GlassCard className={clsx("h-full", isFullscreen && "fixed inset-4 z-50")}>
@@ -114,7 +155,7 @@ export function TradingViewChart({
               Chart
             </span>
             <div className="flex gap-1">
-              {timeframes.map((tf) => (
+              {TIMEFRAMES.map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setSelectedTF(tf)}

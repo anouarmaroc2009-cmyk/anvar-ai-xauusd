@@ -2,7 +2,7 @@ export type PanelSize = "collapsed" | "default" | "expanded" | "fullscreen"
 
 export interface DashboardPanel {
   id: string
-  type: "macro" | "micro" | "calculator" | "execution" | "orderbook" | "chart"
+  type: "macro" | "micro" | "calculator" | "execution" | "orderbook" | "chart" | "news"
   size: PanelSize
   position?: { x: number; y: number }
   order: number

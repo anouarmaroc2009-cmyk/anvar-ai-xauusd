@@ -25,12 +25,22 @@ export function ExecutionPanel() {
 
   const runEvaluation = () => {
     setLoading(true)
+    const signal = confluenceFilter.evaluate(macroEngine.analyze(), smcEngine.getStructure("1h"), {
+      signal: "neutral",
+      strength: 0,
+      rsi: 50,
+      momentum: 0,
+      volumeProfile: "neutral",
+      support: 0,
+      resistance: 0,
+    })
+    const side = signal.macroAlignment > 0.5 ? "buy" : signal.macroAlignment < -0.5 ? "sell" : "neutral"
     const mockQuant: QuantitativeSignal = {
-      signal: Math.random() > 0.5 ? "buy" : "sell",
-      strength: 0.6 + Math.random() * 0.3,
-      rsi: 40 + Math.random() * 30,
-      momentum: (Math.random() - 0.5) * 2,
-      volumeProfile: Math.random() > 0.5 ? "accumulating" : "distributing",
+      signal: side as "buy" | "sell" | "neutral",
+      strength: signal.confidence,
+      rsi: 50 + Math.round((signal.confidence - 0.5) * 40),
+      momentum: (signal.confidence - 0.5) * 2,
+      volumeProfile: signal.macroAlignment > 0.3 ? "accumulating" : signal.macroAlignment < -0.3 ? "distributing" : "neutral",
       support: 2340,
       resistance: 2360,
     }

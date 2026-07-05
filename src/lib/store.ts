@@ -4,7 +4,6 @@ import { DashboardLayout, PanelSize, DashboardPanel, Notification } from "@/type
 interface AppState {
   dashboard: DashboardLayout
   notifications: Notification[]
-  deepFocusMode: boolean
 
   setPanelSize: (panelId: string, size: PanelSize) => void
   toggleDeepFocus: () => void
@@ -29,7 +28,6 @@ export const useAppStore = create<AppState>((set) => ({
     deepFocusMode: false,
   },
   notifications: [],
-  deepFocusMode: false,
 
   setPanelSize: (panelId, size) =>
     set((state) => ({
@@ -43,11 +41,10 @@ export const useAppStore = create<AppState>((set) => ({
 
   toggleDeepFocus: () =>
     set((state) => ({
-      deepFocusMode: !state.deepFocusMode,
       dashboard: {
         ...state.dashboard,
         deepFocusMode: !state.dashboard.deepFocusMode,
-        activeFocus: !state.deepFocusMode ? "chart" : null,
+        activeFocus: !state.dashboard.deepFocusMode ? "chart" : null,
       },
     })),
 

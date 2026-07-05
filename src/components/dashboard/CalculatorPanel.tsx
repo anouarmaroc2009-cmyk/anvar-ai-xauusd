@@ -5,7 +5,7 @@ import { GlassCard, GlassCardHeader, GlassCardBody } from "@/components/ui/Glass
 import { GoldButton } from "@/components/ui/GoldButton"
 import { calculatePositionSize } from "@/lib/calculations/positionSizing"
 import { calculateRiskReward } from "@/lib/calculations/riskReward"
-import { calculateFibonacciLevels, FIBONACCI_RATIOS } from "@/lib/calculations/fibonacci"
+import { calculateFibonacciLevels } from "@/lib/calculations/fibonacci"
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber"
 import { motion } from "framer-motion"
 
@@ -72,7 +72,9 @@ export function CalculatorPanel() {
         </div>
 
         <div className="mt-3">
-          <GoldButton variant="primary" size="sm" className="w-full">
+          <GoldButton variant="primary" size="sm" className="w-full" onClick={() => {
+            window.dispatchEvent(new CustomEvent("apply-calc", { detail: { entry, stopLoss, takeProfit, equity, riskPct } }))
+          }}>
             Apply to Execution
           </GoldButton>
         </div>

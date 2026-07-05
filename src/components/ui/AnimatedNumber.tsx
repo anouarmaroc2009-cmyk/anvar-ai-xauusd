@@ -24,12 +24,31 @@ export function AnimatedNumber({
   format = "price",
 }: AnimatedNumberProps) {
   const ref = useRef<HTMLSpanElement>(null)
-  const prevValue = useRef(0)
+  const prevValueRef = useRef(0)
+  const initRef = useRef(false)
 
   useEffect(() => {
     if (!ref.current) return
 
-    const obj = { value: prevValue.current }
+    if (!initRef.current) {
+      let formatted: string
+      switch (format) {
+        case "percent":
+          formatted = value.toFixed(decimals) + "%"
+          break
+        case "integer":
+          formatted = Math.round(value).toLocaleString()
+          break
+        default:
+          formatted = prefix + value.toFixed(decimals) + suffix
+      }
+      ref.current.textContent = formatted
+      prevValueRef.current = value
+      initRef.current = true
+      return
+    }
+
+    const obj = { value: prevValueRef.current }
     gsap.to(obj, {
       value,
       duration,
@@ -47,16 +66,16 @@ export function AnimatedNumber({
             default:
               formatted = obj.value.toFixed(decimals)
           }
-          ref.current.textContent = formatted
+          ref.current.textContent = prefix + formatted + suffix
         }
       },
       onComplete: () => {
-        prevValue.current = value
+        prevValueRef.current = value
       },
     })
-  }, [value, decimals, duration, format])
+  }, [value, decimals, duration, format, prefix, suffix])
 
-  const dir = value !== prevValue.current ? (value > prevValue.current ? "up" : "down") : "neutral"
+  const dir = value !== prevValueRef.current ? (value > prevValueRef.current ? "up" : "down") : "neutral"
 
   return (
     <span
@@ -67,8 +86,6 @@ export function AnimatedNumber({
         dir === "down" && "text-anvarr-accent-red",
         className
       )}
-    >
-      {prefix}{value.toFixed(decimals)}{suffix}
-    </span>
+    />
   )
 }

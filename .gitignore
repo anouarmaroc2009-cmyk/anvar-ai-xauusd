@@ -6,3 +6,5 @@ out
 *.tsbuildinfo
 next-env.d.ts
 ml/*.joblib
+.vercel
+public/data/predictions.json

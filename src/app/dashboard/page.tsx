@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback, useState } from "react"
+import { useEffect, useCallback, useState, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useMarketData } from "@/hooks/useMarketData"
 import { macroEngine } from "@/lib/ai/macroEngine"
@@ -11,11 +11,14 @@ import { clsx } from "clsx"
 
 import { MacroPanel } from "@/components/dashboard/MacroPanel"
 import { MicroPanel } from "@/components/dashboard/MicroPanel"
+import { AnalysisPanel } from "@/components/dashboard/AnalysisPanel"
 import { MLPredictionPanel } from "@/components/dashboard/MLPredictionPanel"
 import { ExecutionPanel } from "@/components/dashboard/ExecutionPanel"
 import { OrderBookPanel } from "@/components/dashboard/OrderBook"
 import { TradingViewChart } from "@/components/charts/TradingViewChart"
 import { BiasBadge } from "@/components/ui/BiasBadge"
+import { NewsPanel } from "@/components/dashboard/NewsPanel"
+import { orchestrator } from "@/lib/ai/orchestrator"
 import { useAppStore } from "@/lib/store"
 
 type ViewMode = "overview" | "chart" | "ai" | "execution"
@@ -76,11 +79,19 @@ function Header({ view, onViewChange, price, bars, historicalBars }: {
   historicalBars: OHLCBar[]
 }) {
   const bias = macroEngine.analyze()
-  const displayBars = bars.length > 0 ? bars : historicalBars
-  const lastClose = displayBars.length > 0 ? displayBars[displayBars.length - 1].close : 0
-  const prevClose = displayBars.length > 1 ? displayBars[displayBars.length - 2].close : lastClose
-  const dailyChange = lastClose - prevClose
-  const dailyChangePct = prevClose > 0 ? (dailyChange / prevClose) * 100 : 0
+  const [prevBid, setPrevBid] = useState(price?.bid ?? 0)
+  const [flash, setFlash] = useState<"up" | "down" | null>(null)
+
+  useEffect(() => {
+    if (!price?.bid) return
+    if (price.bid > prevBid) setFlash("up")
+    else if (price.bid < prevBid) setFlash("down")
+    setPrevBid(price.bid)
+    const t = setTimeout(() => setFlash(null), 300)
+    return () => clearTimeout(t)
+  }, [price?.bid])
+
+  const displayPrice = price?.bid ?? (bars.length > 0 ? bars[bars.length - 1].close : historicalBars.length > 0 ? historicalBars[historicalBars.length - 1].close : 0)
 
   return (
     <header className="flex flex-col border-b border-anvarr-800 bg-anvarr-950/90">
@@ -93,19 +104,30 @@ function Header({ view, onViewChange, price, bars, historicalBars }: {
           <h1 className="text-xs font-bold tracking-[0.2em] text-gradient-gold uppercase">ANVARR</h1>
           <div className="h-4 w-px bg-anvarr-700" />
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold font-mono text-white">${lastClose.toFixed(2)}</span>
             <span className={clsx(
-              "text-[10px] font-mono font-semibold",
-              dailyChange >= 0 ? "text-anvarr-accent-green" : "text-anvarr-accent-red"
-            )}>
-              {dailyChange >= 0 ? "+" : ""}{dailyChange.toFixed(2)} ({(dailyChangePct).toFixed(2)}%)
+                "text-sm font-bold font-mono transition-colors duration-200",
+                flash === "up" ? "text-anvarr-accent-green" : flash === "down" ? "text-anvarr-accent-red" : "text-white"
+              )}
+            >
+              ${displayPrice.toFixed(2)}
             </span>
+            {price?.bid && (
+              <span className={clsx(
+                "text-[10px] font-mono font-semibold",
+                flash === "up" ? "text-anvarr-accent-green" : flash === "down" ? "text-anvarr-accent-red" : "text-anvarr-slate"
+              )}>
+                {price.bid >= prevBid ? "▲" : "▼"}
+              </span>
+            )}
           </div>
           {price && (
             <>
               <div className="h-4 w-px bg-anvarr-700" />
               <span className="text-[9px] font-mono text-anvarr-slate">
                 ASK ${price.ask.toFixed(2)}
+              </span>
+              <span className="text-[9px] font-mono text-anvarr-500">
+                SPR {price.spread.toFixed(2)}
               </span>
             </>
           )}
@@ -165,11 +187,19 @@ function OverviewView({ bars, historicalBars, orderBook }: { bars: OHLCBar[]; hi
       <CollapsiblePanel id="micro" title="SMC/ICT" className="col-span-6 lg:col-span-2">
         <MicroPanel />
       </CollapsiblePanel>
+      <div className="col-span-12 lg:col-span-4 row-span-2">
+        <CollapsiblePanel id="analysis" title="Unified AI">
+          <AnalysisPanel />
+        </CollapsiblePanel>
+      </div>
       <CollapsiblePanel id="orderbook" title="Order Book" className="col-span-6 lg:col-span-2">
         <OrderBookPanel bids={obBids} asks={obAsks} mid={obMid} spread={obSpread} />
       </CollapsiblePanel>
       <CollapsiblePanel id="execution" title="Execution" className="col-span-6 lg:col-span-2">
         <ExecutionPanel />
+      </CollapsiblePanel>
+      <CollapsiblePanel id="news" title="News" className="col-span-12 lg:col-span-4">
+        <NewsPanel />
       </CollapsiblePanel>
       <CollapsiblePanel id="ml" title="AI Prediction" className="col-span-12 lg:col-span-4">
         <MLPredictionPanel />
@@ -201,6 +231,9 @@ function ChartView({ bars, historicalBars, orderBook }: { bars: OHLCBar[]; histo
       <div className="col-span-12 lg:col-span-4">
         <OrderBookPanel bids={obBids} asks={obAsks} mid={obMid} spread={obSpread} />
       </div>
+      <div className="col-span-12 lg:col-span-4">
+        <NewsPanel />
+      </div>
     </DashboardGrid>
   )
 }
@@ -208,13 +241,19 @@ function ChartView({ bars, historicalBars, orderBook }: { bars: OHLCBar[]; histo
 function AIView() {
   return (
     <DashboardGrid>
-      <div className="col-span-12 lg:col-span-6 row-span-2">
+      <div className="col-span-12 lg:col-span-4 row-span-2">
         <MLPredictionPanel />
       </div>
-      <div className="col-span-12 lg:col-span-3">
+      <div className="col-span-12 lg:col-span-4 row-span-2">
+        <AnalysisPanel />
+      </div>
+      <div className="col-span-12 lg:col-span-4 row-span-2">
+        <NewsPanel />
+      </div>
+      <div className="col-span-12 lg:col-span-6">
         <MacroPanel />
       </div>
-      <div className="col-span-12 lg:col-span-3">
+      <div className="col-span-12 lg:col-span-6">
         <MicroPanel />
       </div>
     </DashboardGrid>
@@ -246,7 +285,7 @@ export default function Dashboard() {
     historicalBars.length > 0 ? historicalBars : undefined
   )
   const [view, setView] = useState<ViewMode>("overview")
-  const deepFocusMode = useAppStore((s) => s.deepFocusMode)
+  const deepFocusMode = useAppStore((s) => s.dashboard.deepFocusMode)
   const toggleDeepFocus = useAppStore((s) => s.toggleDeepFocus)
 
   useEffect(() => {
@@ -254,15 +293,18 @@ export default function Dashboard() {
       if (dailyBars.length === 0) return
       setHistoricalBars(dailyBars)
       smcEngine.feedBars("D", dailyBars)
+      orchestrator.feedBars("D", dailyBars)
       macroEngine.setMacroEnvironment(104.5, 4.25)
     })
   }, [])
 
-  const startMockData = useCallback(() => {
+  const tickCountRef = useRef(0)
+  useEffect(() => {
+    if (state === "connected") return
     const interval = setInterval(() => {
-      const p = generateMockPrice()
-
-      if (Math.random() > 0.85) {
+      generateMockPrice()
+      tickCountRef.current++
+      if (tickCountRef.current % 50 === 0 && Math.random() > 0.5) {
         macroEngine.ingestEvent({
           id: `evt_${Date.now()}`,
           type: Math.random() > 0.7 ? "FOMC" : Math.random() > 0.5 ? "CPI" : "Geopolitical",
@@ -273,9 +315,9 @@ export default function Dashboard() {
           sentiment: Math.random() > 0.5 ? "bullish" : "bearish",
         })
       }
-    }, 3000)
+    }, 10)
     return () => clearInterval(interval)
-  }, [generateMockPrice])
+  }, [state, generateMockPrice])
 
   const viewComponents: Record<ViewMode, React.ReactNode> = {
     overview: <OverviewView bars={bars} historicalBars={historicalBars} orderBook={orderBook} />,
@@ -317,7 +359,7 @@ export default function Dashboard() {
           {historicalBars.length > 0 && (
             <span className="text-anvarr-accent-green">HIST: {historicalBars.length}D</span>
           )}
-          <span className="text-anvarr-accent-blue">AI: XGBoost 57.4%</span>
+          <span className="text-anvarr-accent-blue">AI: XGBoost</span>
         </div>
         <div className="flex items-center gap-3 text-[8px] font-mono text-anvarr-500">
           <span>{view.toUpperCase()} VIEW</span>

@@ -44,7 +44,7 @@ export function useCountUp(
   return ref
 }
 
-export function useParallax(强度: number = 0.5) {
+export function useParallax(intensity: number = 0.5) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -56,8 +56,8 @@ export function useParallax(强度: number = 0.5) {
       const x = (e.clientX - rect.left) / rect.width - 0.5
       const y = (e.clientY - rect.top) / rect.height - 0.5
       gsap.to(el, {
-        x: x * 强度 * 20,
-        y: y * 强度 * 20,
+        x: x * intensity * 20,
+        y: y * intensity * 20,
         duration: 0.4,
         ease: "power1.out",
       })
@@ -65,7 +65,7 @@ export function useParallax(强度: number = 0.5) {
 
     window.addEventListener("mousemove", handleMove)
     return () => window.removeEventListener("mousemove", handleMove)
-  }, [强度])
+  }, [intensity])
 
   return ref
 }

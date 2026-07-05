@@ -2,7 +2,8 @@ import { ConfluenceFilter, confluenceFilter } from "./confluenceFilter"
 import { macroEngine } from "./macroEngine"
 import { smcEngine } from "./microEngine"
 import { ConfluenceResult, ExecutionOrder, QuantitativeSignal } from "@/types/ai"
-import { PositionSizingResult } from "@/lib/calculations/positionSizing"
+import { calculatePositionSize, PositionSizingResult } from "@/lib/calculations/positionSizing"
+import { calculateRiskReward } from "@/lib/calculations/riskReward"
 
 type OrderCallback = (order: ExecutionOrder) => void
 
@@ -20,28 +21,13 @@ export class ExecutionManager {
 
     this.positionSizer = {
       calculate: (equity: number, riskPercent: number, entryPrice: number, stopLoss: number) => {
-        const riskAmount = equity * (riskPercent / 100)
-        const priceRisk = Math.abs(entryPrice - stopLoss)
-        const size = priceRisk > 0 ? riskAmount / priceRisk : 0
-        return {
-          size: Math.round(size * 100) / 100,
-          riskAmount,
-          riskPercent,
-          maxSize: size * 2,
-          recommendedLeverage: 1,
-        }
+        return calculatePositionSize({ equity, riskPercent, entryPrice, stopLoss })
       },
     }
 
     this.riskRewardCalc = {
       calculate: (entry: number, sl: number, tp: number) => {
-        const risk = Math.abs(entry - sl)
-        const reward = Math.abs(tp - entry)
-        return {
-          rrr: risk > 0 ? reward / risk : 0,
-          riskPercent: risk / entry,
-          rewardPercent: reward / entry,
-        }
+        return calculateRiskReward(entry, sl, tp)
       },
     }
   }

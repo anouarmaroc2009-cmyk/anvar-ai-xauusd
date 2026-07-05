@@ -10,8 +10,11 @@
     "ml:train": "python ml/train.py",
     "ml:predict": "python ml/predict.py",
     "relay": "node server/relay.js",
+    "relay:live": "set MASSIVE_WS_URL=wss://socket.massive.com/forex&& node server/relay.js",
+    "relay:stocks": "set MASSIVE_WS_URL=wss://socket.massive.com/stocks&& set MASSIVE_SUBSCRIPTIONS=Q,A&& node server/relay.js",
     "dev:full": "node server/relay.js & next dev",
-    "dev:full:win": "start /B node server/relay.js && next dev"
+    "dev:full:win": "start /B node server/relay.js && next dev",
+    "dev:live:win": "start /B node server/relay.js && next dev"
   },
   "dependencies": {
     "clsx": "^2.1.0",
